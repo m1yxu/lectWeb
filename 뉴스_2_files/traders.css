@@ -1,0 +1,428 @@
+@charset "UTF-8";
+/* COMMON */
+body, p, ul, li, button {
+	margin: 0;
+	padding: 0;
+}
+
+body {
+	position: relative;
+	background-color: #f2f2f2;
+	color: #000;
+	word-break: break-all;
+	font-family: HelveticaNeue-Light,AppleSDGothicNeo-Light,sans-serif;
+	-webkit-text-size-adjust: none;
+}
+
+html {
+	font-size: 10px;
+	line-height: 15px;
+}
+
+ul {
+	list-style: none;
+}
+
+em {
+	font-style: normal;
+}
+
+a {
+	color: inherit;
+	text-decoration: none;
+	-webkit-tap-highlight-color: rgba(0, 0, 0, 0.1);
+}
+
+img {
+	border: 0;
+	vertical-align: top;
+}
+
+mark {
+	color: inherit;
+	font-weight: bold;
+	background: none;
+}
+
+button {
+	-webkit-border-radius: 0;
+	border-radius: 0;
+	background: none;
+}
+
+.blind {
+	position: absolute;
+	overflow: hidden;
+	clip: rect(0 0 0 0);
+	width: 1px;
+	height: 1px;
+	margin: -1px;
+}
+
+/* 상단 타이틀 영역 */
+.traders_area {
+	font-family: AppleSDGothicNeo,HelveticaNeue,sans-serif;
+	font-size: 15px;
+	line-height: 1.267em;
+	background-color: #fff;
+	text-align: left;
+}
+
+.traders_area .traders_tit_area {
+	display: flex;
+	padding: 16px 16px 7px;
+}
+
+.traders_area .sp_traders_da {
+	min-width: 53px;
+	margin-left: auto;
+	text-align: end;
+	font-size: 13px;
+	font-weight: 500;
+	line-height: 16px;
+	letter-spacing: -1.1px;
+	color: #a5a5a5;
+}
+
+.traders_area .traders_tit_area .traders_tit_area_inner {
+	overflow: hidden;
+	height: 19px;
+}
+
+.traders_area .tag_area {
+	overflow: hidden;
+	font-size: 14px;
+	line-height: 17px;
+	color: #797979b2;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+}
+
+/* 소상공인 리스트 */
+.traders_area .traders_cont_list_area {
+	overflow: hidden;
+	width: 100%;
+	padding-bottom: 16px;
+}
+
+.traders_area .traders_cont_list {
+	width: 100%;
+	font-size: 0;
+	white-space: nowrap;
+}
+
+.traders_area .traders_cont_list .list_item {
+	display: inline-block;
+	width: 100%;
+	min-height: 102px;
+	vertical-align: top;
+}
+
+.traders_area .traders_cont_list .traders_cont_area {
+	position: relative;
+	overflow: hidden;
+	padding: 0 16px;
+}
+
+.traders_area .traders_cont_list .traders_thumb_area {
+	position: relative;
+	float: right;
+	overflow: hidden;
+	width: 102px;
+	height: 102px;
+	margin-left: 20px;
+	border-radius: 6px;
+}
+
+.traders_area .traders_cont_list .traders_thumb_area:after {
+	position: absolute;
+	top: 0;
+	right: 0;
+	bottom: 0;
+	left: 0;
+	background-color: rgba(0, 0, 0, 0.03);
+	border-radius: 6px;
+	content: '';
+}
+
+.traders_area .traders_cont_list .traders_img {
+	position: absolute;
+	top: -50%;
+	right: -50%;
+	bottom: -50%;
+	left: -50%;
+	width: 100%;
+	height: auto;
+	margin: auto;
+}
+
+.traders_area .traders_cont_area .img_count {
+	position: absolute;
+	top: 6px;
+	right: 6px;
+	border-radius: 12px;
+	background-color: rgba(0, 0, 0, 0.4);
+	padding: 0 6px;
+	font-size: 11px;
+	font-weight: 500;
+	line-height: 19px;
+	letter-spacing: -0.3px;
+	text-align: right;
+	color: #fff;
+}
+
+.traders_area .traders_cont_list .traders_info_area {
+	overflow: hidden;
+	padding-top: 4px;
+}
+
+.traders_area .traders_cont_list .traders_info_area_inner {
+	display: block;
+}
+
+.traders_area .traders_cont_list .traders_info_area .tit {
+	display: block;
+	overflow: hidden;
+	margin-bottom: 7px;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+	font-size: 18px;
+	color: #000;
+	font-weight: 600;
+	line-height: 21px;
+}
+
+.traders_area .traders_cont_list .traders_info_area .txt {
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+	font-size: 15px;
+	color: #666;
+	line-height: 21px;
+}
+
+.traders_area .traders_cont_list .traders_info_area .btn_area {
+	display: inline-block;
+	position: relative;
+	max-width: 100%;
+	margin-top: 7px;
+	font-size: 14px;
+	color: #8f8f8f;
+	line-height: 18px;
+	vertical-align: top;
+}
+
+.traders_area .traders_cont_list .traders_info_area .btn_area .text {
+	display: block;
+	overflow: hidden;
+	margin-right: 10px;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+}
+
+.traders_area .traders_cont_area .extend_site {
+	display: inline-block;
+	overflow: hidden;
+	max-width: 100%;
+	margin-top: 8px;
+	height: 19px;
+	font-size: 15px;
+	line-height: 19px;
+	color: #424242;
+	vertical-align: top;
+}
+
+.traders_area .traders_cont_area .extend_link {
+	display: block;
+	position: relative;
+	overflow: hidden;
+	padding-right: 12px;
+	color: inherit;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+}
+
+.traders_area .traders_cont_area .extend_site .text {
+	display: block;
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+}
+
+.traders_area .traders_cont_area .icon_main {
+	float: left;
+	height: 17px;
+	margin-right: 5px;
+	padding: 0 4px;
+	border-radius: 11px;
+	border: 1px solid #fc4c4e;
+	font-size: 12px;
+	font-weight: 500;
+	line-height: 18px;
+	color: #fc4c4e;
+}
+
+.traders_area .traders_cont_area .addition_benefit {
+	float: left;
+	margin-right: 5px;
+	color: #0abe16;
+	letter-spacing: -0.6px;
+}
+
+.traders_area .traders_cont_area .addition_benefit ~ .text {
+	color: #797979;
+	letter-spacing: -0.6px;
+}
+
+.traders_area .traders_cont_area .addition_tag {
+	float: left;
+	padding: 0 3px;
+	background-color: #f2f4f6;
+	font-size: 14px;
+	color: #666;
+}
+
+.traders_area .traders_cont_area .addition_tag ~ .addition_tag {
+	margin-left: 6px;
+}
+
+.traders_area .page_area {
+	margin: 0 16px;
+	border-top: 1px solid #f1f1f1;
+	font-size: 0;
+	text-align: center;
+}
+
+.traders_area .page_item {
+	display: inline-block;
+	width: 5px;
+	height: 5px;
+	margin: 14px 4px 14px 5px;
+	border-radius: 50%;
+	border: solid 1px #d5d9dc;
+	background-color: #dee2e8;
+	vertical-align: top;
+}
+
+.traders_area .page_item.on {
+	border-color: #00b110;
+	background-color: #07bf17;
+}
+
+/* 제로페이 가맹점 */
+.traders_area .traders_cont_list .local_currency {
+	position: absolute;
+	left: 0;
+	bottom: 0;
+	z-index: 1;
+	padding: 5px 7px;
+	border-radius: 0 4px 0 6px;
+	border: 1px solid #e9edf7;
+	background-color: #f0f3fb;
+	font-size: 12px;
+	line-height: 12px;
+	font-weight: 500;
+	letter-spacing: -0.55px;
+	color: #2e4da5;
+}
+
+.traders_area .sp_traders_da .icon_ad {
+	background-image: url(../img/sp_traders.png);
+	background-size: 34px 29px;
+	background-position: -18px 0px;
+	background-repeat: no-repeat;
+	width: 16px;
+	height: 16px;
+	display: inline-block;
+	margin-left: 2px;
+	font-size: 1px;
+	color: transparent;
+	vertical-align: top;
+}
+
+.traders_area .traders_cont_area .extend_site .text:before {
+	background-image: url(../img/sp_traders.png);
+	background-size: 34px 29px;
+	background-position: -9px -18px;
+	background-repeat: no-repeat;
+	width: 7px;
+	height: 11px;
+	position: absolute;
+	top: 0;
+	bottom: 0;
+	right: 0;
+	margin: auto 0;
+	content: '';
+}
+
+.traders_area .traders_cont_list .traders_info_area .btn_area:after {
+	background-image: url(../img/sp_traders.png);
+	background-size: 34px 29px;
+	background-position: -9px -18px;
+	background-repeat: no-repeat;
+	width: 7px;
+	height: 11px;
+	position: absolute;
+	top: 50%;
+	right: 0;
+	margin-top: -5px;
+	content: '';
+}
+
+/* 다크모드 대응 */
+@media (prefers-color-scheme: dark) {
+	.traders_area:not(.ad_light_mode) {
+		background-color: #39393c;
+	}
+	.traders_area:not(.ad_light_mode) .sp_traders_da {
+		color: #919192;
+	}
+	.traders_area:not(.ad_light_mode) .sp_traders_da .icon_ad {
+		background-position: 0px 0px;
+	}
+	.traders_area:not(.ad_light_mode) .tag_area {
+		color: #919192;
+	}
+	.traders_area:not(.ad_light_mode) .traders_cont_list .traders_info_area .tit {
+		color: #f0f0f2;
+	}
+	.traders_area:not(.ad_light_mode) .traders_cont_list .traders_info_area .txt {
+		color: #dadde0;
+	}
+	.traders_area:not(.ad_light_mode) .traders_cont_list .traders_info_aqrea .btn_area,
+	.traders_area:not(.ad_light_mode) .traders_cont_area .extend_site .text {
+		color: #a5a5a7;
+	}
+	.traders_area:not(.ad_light_mode) .traders_cont_area .extend_site .text:before,
+	.traders_area:not(.ad_light_mode) .traders_cont_list .traders_info_area .btn_area:after {
+		background-image: url(../img/sp_traders.png);
+		background-size: 34px 29px;
+		background-position: 0px -18px;
+		background-repeat: no-repeat;
+		width: 7px;
+		height: 11px;
+	}
+	.traders_area:not(.ad_light_mode) .traders_cont_area .addition_tag {
+		background-color: #414144;
+		color: #a5a5a7;
+	}
+	.traders_area:not(.ad_light_mode) .traders_cont_area .icon_main {
+		border-color: #ee5353;
+		color: #ee5353;
+	}
+	.traders_area:not(.ad_light_mode) .traders_cont_area .addition_benefit {
+		color: #03c95b;
+	}
+	.traders_area:not(.ad_light_mode) .page_area {
+		border-color: #464649;
+	}
+	.traders_area:not(.ad_light_mode) .page_item {
+		border-color: transparent;
+		background-color: #a5a5a7;
+	}
+	.traders_area:not(.ad_light_mode) .page_item.on {
+		border-color: transparent;
+		background-color: #0abe16;
+	}
+}
+/*# sourceMappingURL=traders.css.map */

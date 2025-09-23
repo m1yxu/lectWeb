@@ -1,0 +1,725 @@
+/**
+ * 2024.04.12 수정, 버전관리를 위해 여기에 추가함.
+ */
+(function (){
+
+    function makeClass(member){
+        var $static = member.$static;
+
+        function $Class(){
+            this.$constructor.apply(this, arguments);
+        }
+
+        // static
+        if($static){
+            for(var key in $static){
+                if($static.hasOwnProperty(key)){ // jshint ignore:line
+                    $Class[key] = $static[key];
+                }
+            }
+            delete member.$static;
+        }
+
+        // set class member
+        $Class.prototype = member;
+        $Class.prototype.constructor = $Class; // not change constructor
+
+        return $Class;
+    }
+    /**
+     * 기사 본문 중간에 광고 1개 추가
+     *
+     * #### **노출 방식**
+     *
+     * 1. 본문이 1000자 이상일 경우 ([MIN_ARTICLE_LENGTH_FOR_AD_SHOW](ArticleAd.js.html#line99) 값)
+     * 2. 본문 단락 중간에 광고 추가
+     *      * 해당 위치에 "영상 or 포토"등이 있을 경우 연속 노출되지 않게하고
+     *      * 본문 아래 광고와 한 화면에 보이면 안됨
+     *      * 노출 위치가 제일 "상단 or 하단"일 경우는 노출하지 않음
+     *
+     * #### **적용 방법 요약**
+     *
+     * 서비스에서,
+     *
+     * 1. "광고 SDK module"에 추가할 광고 설정
+     * 2. 광고가 load 될 wrapper tag 를 html 에 선언해 놓고
+     * 3. 이 module 을 실행하면
+     * 4. 광고 load 후 > 적당한 위치에 광고가 추가된다.
+     *
+     * #### **Browser Compatibility**
+     *
+     * - IE10+ (2019.04.19 현재 광고 SDK 가 동작하는 IE 버전, 광고 추가 함수 자체는 IE9+)
+     * - All Modern Browser
+     *
+     * #### **의존 Resource**
+     *
+     * - Browser Native API 로 개발됐다. (외부 lib 의존하지 않음)
+     * - `광고 SDK`에만 대응
+     *
+     * #### **개발 참고**
+     *
+     * 본문 광고 이미지에 잘 못 추가되는 "원본보기 버튼"은 CSS에서,
+     * `dispaly:none;` 처리됩니다.
+     *
+     *
+     * @namespace ArticleAd
+     * @requires {@link https://naver.github.io/glad-sdk-guide/web/common/basic/}
+     *
+     *
+     * @see [DEMO-1](../demo/index.html)
+     * @see [DEMO-2](../demo/index1.html)
+     * @see [DEMO-3](../demo/index2.html)
+     *
+     * @example <caption>DA 광고 SDK > 본문에 추가될 광고 설정 추가</caption>
+     *
+     * <script async src="https://ssl.pstatic.net/tveta/libs/ssp/ssp.web.sdk.js"></script>
+     * <!-- <script async src="https://test-img.tveta.naver.net/libs/ssp/ssp.web.sdk.js"></script> -->
+     *
+     * <script>
+     * var spwp = spwp || {};
+     * spwp.cmd = spwp.cmd || [];
+     *
+     * spwp.cmd.push(function () {
+     *    spwp.setConfig({
+     *        enablePersistAd: true
+     *    });
+     *
+     *    // 2020/01/23 현재 사용 중인 광고 unit 으로 예제 구성
+     *    var adUnits = [
+     *        {
+     *            unitId: "m_news", // 기존 본문 하단 광고
+     *            divId: "some-id-from-service" // 서비스에서 설정한 광고의 고유 id
+     *        },
+     *        {
+     *            unitId: "m_news_smb", // 소상공인 광고
+     *            divId: "some-id-from-service" // 서비스에서 설정한 광고의 고유 id
+     *        },
+     *        // 중간 광고의 경우 "spwp.renderAd()"도 js module 에서 처리하므로,
+     *        // 서비스에서 직접 render 하면 안 된다.
+     *        {
+     *            unitId: "m_news_body", // 본문 광고 id (광고로부터 발급 받은 id)
+     *            divId: "article-ad-id-from-service", // 서비스에서 설정한 광고의 고유 id
+     *            extraOption: { // 옵션 값으로 서비스 custom 값
+     *                foo: "123",
+     *                bar: "345"
+     *            }
+     *        }
+     *    ];
+     *
+     *    spwp.addAdUnits(adUnits);
+     *
+     *    // 본문 광고와 상관 없는 광고 unit 은 먼저 request 하고,
+     *    //
+     *    // 본문 광고와 소재가 중복 노출될 수 있는 unit은,
+     *    // js module init 할 때 eventHandler 옵션에서 별도로 실행합니다.
+     *    spwp.requestAds({
+     *        adUnitIds: ["m_news_smb"]
+     *    });
+     * });
+     * </script>
+     *
+     * @example <caption>본문에 추가될 광고 HTML</caption>
+     *
+     * <div class="_article_body">
+     *      <div class="_article_content">
+     *          본문...
+     *      </div>
+     *      <!-- 반드시 `style="display:none;"` 추가 -->
+     *      <!-- 광고 load 후, 광고 노출 조건에 적합하면 "기사 본문"으로 위치 이동 + 노출 -->
+     *      <div class="_article_ad" style="display:none;">
+     *          <div id="article-ad-id-from-service"></div> <!-- id는 SDK 옵션 값 `divId` 와 같은 값으로 설정 -->
+     *      </div>
+     * </div>
+     *
+     * @example <caption>"본문에 광고 추가 Module" 실행 </caption>
+     *
+     * <script src="article-ad.js"></script> <!-- 서비스 소스에 merge 하는 등, load 하는 방법은 자유 -->
+     * <script>
+     * window.addEventListener('pageshow', function(){
+     *  // 주의:
+     *  // - 반드시 DOM을 조작하는 다른 module보다 먼저 실행돼야합니다. (e.g. 사전 module)
+     *  ArticleAd.init(
+     *      document.querySelector('._article_body'),
+     *      {
+     *          bodySelector: '._article_content',
+     *          adSelector: '._article_ad',
+     *          onDisplayableBodyAd: function(){
+     *              // pageshow 이전에 module init 했다면,
+     *              // spwp.cmd.push(function(){
+     *              //      ...
+     *              // });
+     *              //
+     *              // 2개 이상의 광고 소재를 호출하고,
+     *              // 광고 소재가 중복될 우려가 있는 경우 반드시 "광고 동기 호출 API"를 사용해야 한다
+     *              spwp.requestAdsSync({
+     *                  adUnitIds: ['some_unit_id', 'unit_id_article_body']
+     *              });
+     *              spwp.renderAds({
+     *                  divIds: ['nmap_c_215_0000760471_103_1', 'nmap_c_215_0000760471_103_some_article_body_id']}
+     *              );
+     *          },
+     *          onNotDisplayableBodyAd: function(){
+     *              spwp.requestAds({
+     *                  adUnitIds: ['some_unit_id']
+     *              });
+     *              spwp.renderAds({
+     *                  divIds: ['nmap_c_215_0000760471_103_1']
+     *              });
+     *          }
+     *      }
+     *  );
+     * });
+     * </script>
+     */
+// instance를 선언과 동시에 생성해서 `new` keyword를 문법적으로 사용할 수 없게 했다. (singleton)
+// 이유:
+// - SPA 페이지도 지원해야 하는데
+// - `new` 방식은 사용이 번거롭고 (e.g. instance 를 변수에 저장 후, deactivate > activate),
+// - Module 특성상 페이지에 하나의 instance 만 있으면 된다
+    var ArticleAd = new (makeClass({
+        $static: {
+            _CONFIG: {
+                MIN_ARTICLE_LENGTH_FOR_AD_SHOW: 1000, // 지정한 text 길이 이상일 경우 ad 적용
+                // 광고 노출 위치 e.g. 0.5 는 중앙, 0.2 는 상단 (단위: %)
+                //
+                // `0`으로 설정하면,
+                // 광고 노출이 적합한 문단 중 제일 위에 있는 문단에 노출 된다.
+                // `REQUIRED_PARAGRAPH_COUNT_FOR_READABILITY: {prev:1, next:2}` 와 같이 설정돼있다면,
+                // * 상단에 광고 노출이 적합한 문단이 있다면, 2번째 문단 다음에 광고가 노출되고
+                // https://m.news.naver.com/read.nhn?oid=469&aid=0000377074&sid1=102&mode=LSD
+                // * 상단에 적합한 문단이 없다면, 이후 적합한 첫 번째 문단에 노출된다
+                // https://m.news.naver.com/read.nhn?oid=015&aid=0004119278&sid1=101&mode=LSD
+                AD_POSITION_BY_PERCENTAGE: 0.5,
+                // 광고와 가까이 보이면 안되는 tag
+                // `<img>`, `<video>...</video>`, `<iframe></iframe>`
+                SHOULD_NOT_NEAR_AD_TAG: 'img,video,iframe',
+                // <div class="video_area _VIDEO_AREA"></div>
+                // e.g.
+                // 네이버 TV 영상의 경우 lazy-loading 되므로 `SHOULD_NOT_NEAR_AD_TAG`로 체크할 수 없어서,
+                // css class 로 체크
+                SHOULD_NOT_NEAR_AD_CLASS: 'video_area,end_photo_org',
+                // 지정한 tag 로 "text node" 를 wrapping
+                // - 현재 기사 구조상 text node 가 문단인데,
+                // - 광고는 문장 다음에 추가해야 하므로 문단 node 를 select 할 수 있게 element 로 wrapping
+                // - e.g. `내용 내용` to `<span>내용 내용</span>`
+                MY_PARAGRAPH_TAG: 'span',
+                // 문단 요소에 추가될 css class
+                // 혹시, css or dom select 가 필요할 때 사용하라고
+                MY_PARAGRAPH_CLASS: 'article_p',
+                //
+                // ### 옵션과 광고 위치 정해지는 방식 이해
+                //
+                // > 자세히 설명하지 않으면 이해하기 어려울 것 같아서, 다소 길게 작성하였음
+                //
+                // 기사 가독성을 위해,
+                // 설정한 개수만큼 상.하에 문단이 있을 경우만 광고를 추가할 수 있는 대상 문단이 된다.
+                // e.g. {'prev': 1, 'next': 2}
+                // * 위로 1문단이 있어야 광고 노출 대상이 되지만 (`{1} 2 {3 4} > 2가 광고 노출 대상`),
+                // * 광고 출력은 "선택된 문단 다음에 노출"되므로 ("2"가 노출 대상)
+                // * 출력된 광고 위로는 2문단이 있게 됩니다. (`{1} 2 <광고> {3 4}` > 노출된 광고 위로는 2문단이 있게 됨),
+                //
+                // 예를 들어, 본문에 문단이 4개 있다면 ("1 2 3 4"),
+                // `1`은 prev 에 문단이 없어서 대상이 안되고,
+                // `2`는 prev 1개, next 2개로 조건에 충족 되므로 광고를 노출 시킬수 있는 대상,
+                // `3:4`는 next에 문단 2개가 없어서 제외되고,
+                // 광고는 결정된 대상 문단의 다음에 위치 하므로,
+                // "1 2 <광고> 3 4" 와 같이 노출 된다.
+                //
+                // 쉽게,
+                // `{prev:1, next:2}` 와 같이 설정된 경우,
+                // 문단의 prev, next 수 만큼 양 끝에서 제외하고,
+                // 나머지는 모두 광고 노출 대상이라고 생각하면 되는데,
+                //
+                // > 전체 문단이 6개인 경우,
+                // > "{1} 2 3 4 {5 6}" 와 같이 "2 3 4"가 광고가 노출될 수있는 문단
+                //
+                // 광고는,
+                // 이미지, 동영상 등과 근접해 있으면 안되므로,
+                // 전.후 이미지, 동영상 구간 별로 "prev, next" 개수 고려해서 생각하면,
+                // 노출 위치를 이해하고 예상 할 수 있다.
+                //
+                // > 아래와 같이 전체 문단이 12개인 경우,
+                // > {1} {2 3} 이미지 {4} 5 6 {7 8} 이미지 {9} 10 {11 12}
+                // > "[5,6,10]" 문단이 광고가 노출될 수 있는 문단이고,
+                // > 광고 노출 위치를 50%로 설정했을 경우,
+                // > 정혜진 계산을 통해 index 1인 "문단 6" 다음에 광고가 노출되므로 (`_appendAdWrapper()` 참고)
+                // > "{1} {2 3} 이미지 {4} 5 6 <광고> {7 8} 이미지 {9} 10 {11 12}"
+                //
+                // *광고 출력 예시*
+                // * {prev:1} 2 <광고> {next:3 4}
+                // * {1} 2 3 <광고> 4 {5 6}
+                // * {1} 이미지 {2} 3 <광고> {4 5} 이미지 {6}
+                // * {1} {2 3} 이미지 {4} 5 6 <광고> {7 8} 이미지 {9} 10 {11 12}
+                // * 1 이미지 2 3 4 이미지 5 6 7 이미지 8 9 이미지 10 11 이미지 12 (광고 노출될 위치가 적당하지 않아 노출하지 않음)
+                //
+                // ### 문단 개수별 광고 위치
+                //
+                // {prev:1, next:2} 일 경우,
+                // 전체 문단이 짝수면 광고는 문단의 중앙 위치에 노출되고,
+                // * {1} 2 <광고> {3 4}
+                // * {1} 2 3 <광고> 4 {5 6}
+                //
+                // 홀수면 한쪽으로 치우칠 수밖에 없다.
+                // > 필요하다면, 어느쪽으로 치우치게 할지는 개발 가능 (전체 문단이 홀수일 때 로직 분기)
+                // * {1} 2 <광고> 3 {4 5}
+                // * {1} 2 3 <광고> 4 5 {6 7}
+                REQUIRED_PARAGRAPH_COUNT_FOR_READABILITY: {
+                    // `prev`는 광고 노출로 선택된 문단의 다음에 노출 되므로, 여유 주고 싶은 문단의 개수보다 1 작게 설정해야 한다.
+                    // e.g.
+                    // 광고 위로 2개의 문단 여유를 주고 싶다면 `prev:1`로 설정
+                    // `{prev:1,next:2}` > {1} 2 <광고> {3 4}
+                    // `{prev:2,next:1}` > {1 2} 3 <광고> {4}
+                    // `{prev:2,next:2}` > {1 2} {3 4} (조건을 만족하는 문단이 없어서 광고를 노출하지 못함)
+                    'prev': 1,
+                    'next': 2
+                }
+            }
+        },
+
+        $constructor: function(){
+            // 적용은 public method `init()` 을 실행
+        },
+
+        /**
+         * 초기화하고 기능을 적용
+         *
+         * @memberOf ArticleAd
+         *
+         * @param {HTMLElement} wrapper "본문과 본문에 추가될 광고를 포함"하는 wrapper
+         * @param {object} config
+         * @param {String} config.bodySelector 정확히 본문만 포함하는 element의 selector
+         * @param {String} config.adSelector 본문에 추가될 광고 element의 selector
+         * @param {Function} config.onDisplayableBodyAd
+         * - 본문 광고를 출력할 수 있을 때 실행, 이곳에서 원하는 광고를 load 하면 됩니다.
+         * - body 광고 출력 가능한지 여부, 광고 위치 등만 정하고,
+         * - 실제 광고 호출은 사용하는 쪽에서 handler를 이용해 처리하는 컨셉입니다.
+         * @param {Function} config.onNotDisplayableBodyAd 본문 광고를 출력할 수 없을 때 실행, 이곳에서 원하는 광고를 load 하면 됩니다.
+         */
+        init: function(wrapper, config){
+            // "광고 추가" 에러로,
+            // 컨텐츠 소비에 방해가 되거나, 사용성을 해치지 않게,
+            // error 일 경우 예외 처리
+            try{
+                return this._init.apply(this, arguments);
+            }catch(e){}
+        },
+
+        _init: function(wrapper, config){
+            this._config = this.constructor._CONFIG;
+
+            var articleWrapper = wrapper.querySelector(config.bodySelector);
+            var adWrapper = wrapper.querySelector(config.adSelector);
+            var originArticleBodyChildNodes = Array.prototype.slice.call(articleWrapper.childNodes);
+            var contentNodes = []; // 의미 없는 "br & blank" tag 등은 제외한 node로, 광고 위치 구할 때 필요한 node list
+            var adAppendableTargetEls = []; // 광고 추가 가능한 문단만 수집
+
+            if(adWrapper === null){
+                this._fireEventHandler(config.onNotDisplayableBodyAd);
+                return;
+            }
+            // 문자 개수 체크,
+            // `innerText` 를 이용한 이유
+            // - 화면에 보이지 않는 텍스트가 제외되고 (hidden 요소, script 의 내부 소스 등)
+            // - textContent 와 달리 br 이 줄 바꿈으로 되지만 그 오차는 무시해도 된다고 생각.
+            if(articleWrapper.innerText.trim().length < this._config.MIN_ARTICLE_LENGTH_FOR_AD_SHOW){
+                this._fireEventHandler(config.onNotDisplayableBodyAd);
+                return;
+            }
+
+            // 광고 위치 결정하는 컨셉
+            // 1. 본문의 original child nodes 전체에서
+            // 2. 의미 없는 tag 는 제외 (e.g. br, blank node)
+            // 3. text-node 는 "문장 tag"로 wrapping (dom 으로 참조할 수 있게)
+            // 4. 광고 위치를 계산할 때 사용할 content node 를 list 로 만들고 (br, blank node 등은 제외한 node list)
+            // 5. 4번에서 `node-list` 중 위치를 정해서 광고 추가
+
+            // 본문의 original child-nodes 전체에서
+            // 1. 문단 tag 적용
+            // 2. content-node 선별
+            //
+            // 마지막 contentNode 이후의 non-content-node 를 저장해서,
+            // 1. 검사 대상 node가 이전 문장과 합쳐야 하는지 판단할 때 사용하고,
+            // 2. 합쳐져야 하는 node 라면, 저장된 node 모두를 이전 문장과 합치고 값을 init 한다.
+            var nonContentNodesSinceLastContentNode = [];
+            originArticleBodyChildNodes.forEach(function(node, idx, originArray){
+                if(this._isBr(node) || this._isBlankNode(node)){
+                    // non-content-node 저장
+                    // * 이전 문장에 포함돼야 한다면, loop 돌면서 순서대로 append 된다
+                    // * e.g. `[" ", <br>]` append 되면 `" "<br>`
+                    //
+                    // `contentNodes` 에 push 되는 node 가 있다면, 그 때 값을 모두 제거(init)해야 한다.
+                    // (마지막 content-node 이후의 node 만 저장되는 곳 이므로)
+                    nonContentNodesSinceLastContentNode.push(node);
+                    return;
+                }
+                // my-paragraph 로 감싸지 않고 contentNodes 로만 분리할 node
+                if(
+                    this._isShouldNotNearAd(node) ||
+                    // block tag는 다시 문장 tag로 묶지 않는다.
+                    //
+                    // block tag를 다시 문장 tag로 묶으면,
+                    // `<block>...</block><문장>...</문장>`인 겨우,
+                    // * https://m.news.naver.com/rankingRead.nhn?oid=025&aid=0002971117&sid1=100 상단 summary 문단
+                    // `<문장><block>...</block></문장><문장>...</문장>`으로 돼서,
+                    // "이전 node가 문장이면" 이전 문장에 포함하는 로직 때문에,
+                    // `<문장><block>...</block><문장>...</문장></문장>`으로 되는 bug가 발생한다.
+                    this._isBlockTag(node)
+                ){
+                    contentNodes.push(node);
+                    nonContentNodesSinceLastContentNode = [];
+                    return;
+                }
+
+                // 현재 node가 개별 문장이 아니라면, 이전 문장에 포함 시킨다.
+                //
+                var lastContentNode = contentNodes[contentNodes.length-1];
+                if(
+                    // module 에서 "문장 tag로 변경한 node" 에만 추가 한다
+                    // 이유:
+                    // 수신된 기사 html 중 block tag 등은,
+                    // 이미 독립된 문단으로 판단되므로 다른 node 를 추가하지 않는다
+                    this._isMyParagraph(lastContentNode) &&
+                    this._isRequiredMergeToPrevParagraph(nonContentNodesSinceLastContentNode)
+                ){
+                    // non-content-node 와 현재 target-node 를, 이전 문단 tag에 추가한다
+                    //
+                    // e.g.
+                    // 현재 검사 node 는 `<a>`,
+                    // > 마크업 before (nonContentNodes) to 마크업 after
+                    // > nonContentNodes 는 모두 my-paragraph 에 합쳐진다.
+                    // `<my-paragraph><a>` (`nonContentNodes = []`) to `<my-paragraph><a></my-paragraph>`
+                    // `<my-paragraph> <a>` (`[" "]`)
+                    // `<my-paragraph><br><a>` (`[<br>]`)
+                    // `<my-paragraph> <br><a>` (`[" ", <br>]`)
+                    // `<my-paragraph><br> <a>` (`[<br>, " "]`)
+                    // `<my-paragraph> <br> <a>` (`[" ", <br>, " "]`)
+                    nonContentNodesSinceLastContentNode.forEach(function(nonContentNode, idx){
+                        lastContentNode.appendChild(nonContentNode);
+                    });
+                    lastContentNode.appendChild(node);
+                    nonContentNodesSinceLastContentNode = []; // 모두 append 됐으므로 init
+                    return;
+                }
+
+                if (node.className === 'end_photo_org') {
+                    return;
+                }
+
+                // 문단 tag를 적용하고 & contentNodes 에 추가
+                //
+                var myParagraph = this._replaceToParagraphTag(node);
+                contentNodes.push(myParagraph);
+                nonContentNodesSinceLastContentNode = [];
+            }, this);
+
+            // 제일 마지막 2개 ~ 3개는 보통 byline 이므로 제거
+            // * 광고 위치를 계산할 때 고려 대상에 포함되지 않게 제거
+            // * 제거하지 않으면, 광고 위치가 원하는 것보다 다소 아래에 출력된다.
+            contentNodes.pop();
+            contentNodes.pop();
+            contentNodes.pop();
+
+            // 전.후 위치를 고려해서, 광고 추가 가능한 "문단 node"만 filter
+            //
+            contentNodes
+                .forEach(function(node, idx, originArray){
+                    // 광고를 추가할 수 없는 node
+                    if(this._isShouldNotNearAd(node)){
+                        return;
+                    }
+
+                    // 기사 가독성을 위해, 현재 문단의 앞.뒤 공간 체크
+                    // e.g. 광고가 이미지, 동영상 등과 같은 화면에 연속해서 보이면 안된다 (기사 가독성을 해침)
+                    if(
+                        this._hasSpaceForReadability('prev', idx, originArray) === false ||
+                        this._hasSpaceForReadability('next', idx, originArray) === false
+                    ){
+                        return;
+                    }
+
+                    adAppendableTargetEls.push(node);
+                }, this);
+
+            if(this._appendAdWrapper(adWrapper, adAppendableTargetEls)){
+                this._removeNextSiblingBr(adWrapper); // 추가된 광고 상.하 여백을 css 로 styling 하기 용이하게
+                this._fireEventHandler(config.onDisplayableBodyAd);
+                adWrapper.style.display = ''; // load 된 광고를 show
+            }else{
+                this._fireEventHandler(config.onNotDisplayableBodyAd);
+            }
+
+            return this;
+        },
+
+        // ad 가 load 될 wrapper element 를 본문의 적당한 위치로 이동
+        _appendAdWrapper: function(adEl, adAppendableTargetEls){
+            var length = adAppendableTargetEls.length;
+            if(length === 0){
+                return false;
+            }
+            // 광고 추가 가능한,
+            // 유효한 문단이 1개(length) 일 때: Math.ceil(1 * 0.5:중앙) = 1 번째 문단
+            // 유효한 문단이 7개 일 때: Math.ceil(7 * 0.5) = 4 번째 문단
+            var targetNumber = this._config.AD_POSITION_BY_PERCENTAGE === 0?
+                1: // 적합한 문단 중 제일 위에있는 문단으로, 최소 값
+                Math.ceil(length * this._config.AD_POSITION_BY_PERCENTAGE);
+            var adTargetNodeIndex = targetNumber - 1;
+            var adTargetNode = adAppendableTargetEls[adTargetNodeIndex];
+            // 선택된 문단이 "문단의 제목"으로 판단될 경우 (e.g. 문단의 title, Q&A 형식에서 질문)
+            // "문단 제목" 다음에 광고가 들어가면 문맥이 끊기므로 (BAD: `...<문단제목><광고><문단내용>`, `...<Q><광고><A>`),
+            // 다른 node 에 광고를 추가 한다. (GOOD: `...<광고><문단제목><문단내용>`, `...<광고><Q><A>`)
+            if(this._isParagraphTitle(adTargetNode)){
+                // 선택된 문장이 적합하지 않다면,
+                adTargetNode = adAppendableTargetEls[adTargetNodeIndex - 1] || // 이전 target-node 에 광고 추가
+                    adAppendableTargetEls[adTargetNodeIndex + 1] || // 다음 target-node 에 추가
+                    null; // 이전, 다음 둘 다 없다면 추가하지 않는다
+            }
+            if(Boolean(adTargetNode) === false){
+                return false;
+            }
+
+            // 결정된 appendable-node 의 위치에 노출해야 하므로,
+            // `nextSibling + insertBefore` 로 처리
+            // e.g. `<target-node>...<target-node><br><br>`
+            var adTargetNodeNext = adTargetNode.nextSibling; // <br>
+            // `<target-node>...<target-node><광고><br><br>`
+            adTargetNodeNext.parentNode.insertBefore(adEl, adTargetNodeNext);
+            return true;
+        },
+
+        _replaceToParagraphTag: function(targetNode){
+            var paragraph = document.createElement(this._config.MY_PARAGRAPH_TAG);
+
+            paragraph.className = this._config.MY_PARAGRAPH_CLASS;
+            targetNode.parentNode.replaceChild(paragraph, targetNode); // 문단 tag로 교체
+            paragraph.appendChild(targetNode); // node를 문단 tag로 wrapping (`<문단><node>...</node></문단>`)
+
+            return paragraph;
+        },
+
+        _hasSpaceForReadability: function(direction, baseIndex, contentNodes){
+            var directionBySigned = (direction === 'prev')? -1: 1;
+            var cursorIndex = baseIndex;
+
+            return Array.apply(null, Array(this._config.REQUIRED_PARAGRAPH_COUNT_FOR_READABILITY[direction]))
+                .every(function(value, idx){
+                    cursorIndex = cursorIndex + directionBySigned;
+                    var node = contentNodes[cursorIndex];
+                    // 광고와 근접하게 화면에 노출돼도 되는 node
+                    return this._isShouldNotNearAd(node) === false;
+                }, this);
+        },
+
+        _removeNextSiblingBr: function(el){
+            var prevEl;
+            while(true){
+                prevEl = el.nextSibling;
+                if(Boolean(prevEl) === false){
+                    break;
+                }
+
+                // - `isBlankNode` for `<strong><br><br></strong>`
+                // - e.g. https://m.news.naver.com/read.nhn?oid=018&aid=0004344146&sid1=101&mode=LSD
+                if(this._isBr(prevEl) || this._isBlankNode(prevEl)){
+                    prevEl.parentNode.removeChild(prevEl);
+                }else{
+                    break;
+                }
+            }
+        },
+
+        _isRequiredMergeToPrevParagraph: function(nonContentNodesSinceLastContentNode){
+            var brCount = 0;
+            nonContentNodesSinceLastContentNode.forEach(function(node, idx){
+                if(this._isParagraphSeparationNode(node)){
+                    brCount = brCount + 2; // 문단을 구분하는 node 이므로 "br 2개"와 같다
+                    return;
+                }
+                if(this._isBr(node)){
+                    brCount = brCount + 1;
+                }
+            }, this);
+            // `br`이 없거나, 1개인 경우
+            return brCount < 2; // 2개 이상 있다면, 이전 문장과 분리돼야 하는 별도의 문장이다 (이전 문장과 합치면 안됨)
+        },
+
+        _isMyParagraph: function(node){
+            try{
+                return node.className === this._config.MY_PARAGRAPH_CLASS;
+            }catch(e){
+                return false;
+            }
+        },
+
+        // 광고와 가까이 노출되면 안되는 node
+        _isShouldNotNearAd: function(node){
+            var shouldNotNearAdSelectors = this._config.SHOULD_NOT_NEAR_AD_TAG.split(',');
+            try{
+                var nodeName = node.nodeName.toLowerCase();
+                var isShouldNotNearAdNode = shouldNotNearAdSelectors.some(function(value, idx){
+                    return value.trim() === nodeName;
+                });
+                return isShouldNotNearAdNode ||
+                    this._config.SHOULD_NOT_NEAR_AD_CLASS.indexOf(node.className) > -1 ||
+                    // e.g. `<div><iframe>...</iframe></div>`와 같이 자식 node인 경우
+                    node.querySelector(this._config.SHOULD_NOT_NEAR_AD_TAG) !== null;
+            }catch(e){
+                // 예외 상황일 경우 `false`를 return 하면,
+                // 광고와 근접해도 되는 node로 취급될 수 있으므로 `false`로 return 하면 안 된다.
+            }
+        },
+
+        /**
+         * node 가 문단의 제목으로 판단될 경우 true
+         * * `<span class="article_p"><strong>문단 제목 ...</strong></span><br><br><span class="article_p">내용 내용 내용 ...</span>`
+         * * Q&A 형식에서 `Q`에 해당하는 문단도 title 로 분류 된다.
+         *
+         * **참고**
+         * 본문 html 형식이 워낙 다양해서 100% 체크할 수는 없어서,
+         * 확인된 형식만 대응하였으며,
+         * 다른 형식이 발견될 경우 추가로 처리하면서 고도화 시켜야 한다.
+         *
+         * @param {HTMLElement} node
+         * @returns {boolean}
+         * @private
+         */
+        _isParagraphTitle: function(node){
+            return (
+                // tag 로 검사
+                (function(){
+                    // strong
+                    // > `<span class="article_p"><strong><strong>청와대의 무모한 피의자 보호</strong></strong></span>`
+                    // > `<div class="tag_interview"><br><strong>Q : ‘소금 코팅 마스크’는 언제쯤 상용화될 수 있나.    </strong><br></div>`
+                    // * https://m.news.naver.com/read.nhn?sid1=110&oid=119&aid=0002381819&mode=LSD
+                    // * https://m.news.naver.com/read.nhn?aid=0004123624&oid=015&sid1=101
+                    // * https://m.news.naver.com/read.nhn?mode=LSD&sid1=104&oid=025&aid=0002974153
+                    //
+                    // b
+                    // > `<span class="article_p"><b>Q. 환자가 방문했던 장소 언제부터 가도 되나.</b></span>`
+                    // * https://m.news.naver.com/read.nhn?mode=LSD&sid1=103&oid=005&aid=0001286144
+                    //
+                    // h4
+                    // > `<div class="size5"><h4>한국 학생들이 인턴으로 일하기 위한 조건들</h4></div>`
+                    // * https://m.news.naver.com/read.nhn?mode=LSD&sid1=105&oid=293&aid=0000025106
+                    var cloneEl = node.cloneNode(true); // 원본 node 에는 영향을 주지 않기 위해
+                    var titleTag = cloneEl.querySelector('strong,b,h1,h2,h3,h4,h5,h6'); // 해당 tag 가 있다면 title 로 본다
+                    if(!titleTag){
+                        return false;
+                    }
+                    cloneEl.removeChild(titleTag); // select 된 title tag 제거 후
+                    return cloneEl.textContent.trim() === ""; // 빈 문자열 이라면 title tag 로 본다 (해당 tag만 있었다는 의미이므로)
+                })() ||
+                //
+                // 정규식으로 문자열 검사
+                (function(){
+                    // "◇ ": https://m.news.naver.com/read.nhn?oid=079&aid=0003321239&sid1=102&mode=LSD
+                    // " -": https://m.news.naver.com/read.nhn?oid=005&aid=0001286841&sid1=103
+                    return /^(?:\s*◇\s+|\s*-\s*)/.test(node.textContent.trim());
+                })() ||
+                //
+                // 문단의 높이 검사
+                (function(){
+                    // 사용자 폰트 크기 설정 값 "최소, 최대값"을 감안해서,
+                    // 2줄 정도의 높이라면 title 로 본다.
+                    //
+                    // chrome pc mobile emulation 에서,
+                    // 폰트 크기 1단계 > 2줄 49px, 3줄 75px
+                    // 폰트 크기 5단계(최대) > 2줄 60px, 3줄 92px
+                    return node.offsetHeight <= 65;
+                })()
+            );
+        },
+
+        _isBlockTag: function(node){
+            try{
+                // IE9+
+                // https://stackoverflow.com/questions/9852163/determine-if-an-element-is-block-level-or-inline-with-javascript-while-walking-d
+                return window.getComputedStyle(node).getPropertyValue('display') === 'block' ||
+                    // inline인 경우도 innerHTML 끝에 `br` tag 2개가 있다면 block 으로 처리
+                    // * true: <strong>... <br><br></strong>, <strong>... <br/><br  /></strong>
+                    // * false: <span><br><br></span>
+                    //
+                    // https://m.news.naver.com/read.nhn?mode=LSD&mid=sec&sid1=105&oid=011&aid=0003686317
+                    // 2번째 이미지 하단 summary(strong tag)
+                    /[^\s]+\s*(?:<br\s*\/?>\s*){2}$/.test(node.innerHTML);
+            }catch(e){
+                return false;
+            }
+        },
+
+        /**
+         * 문단을 구분하는 tag
+         * * true(br이 2개 있는 tag): <span><br><br><span>, <span>  <br/> <br  /> <span>
+         * * false: <strong>... <br><br></strong>, <strong>... <br/><br  /></strong>
+         *
+         * @param {HTMLElement} node
+         * @returns {boolean}
+         * @private
+         */
+        _isParagraphSeparationNode: function(node){
+            try{
+                // true: <span><br></span>, <span> <br> </span>, <span> <br/> </span>
+                // false: <span>foo <br> </span>, <span> <br> bar</span>
+                return /^\s*(?:<br\s*\/?>\s*){2}$/.test(node.innerHTML);
+            }catch(e){
+                return false;
+            }
+        },
+
+        _isBlankNode: function(node){
+            try{
+                // true: <span></span>, <span><br></span>, <span><br><br></span>, " " (text-node는 querySelector 없음)
+                // false: <span>foo <br> bar</span>, <video>, <iframe>
+                var isAllowBlankText = this._isShouldNotNearAd(node) === true; // 광고와 가까이 있을 수 없는 node는 `blank`를 허용한다
+                return this._isBlankText(node.textContent) && isAllowBlankText === false;
+            }catch(e){
+                return false;
+            }
+        },
+
+        _isBr: function(node){
+            try{
+                return node.nodeName.toLowerCase() === 'br' ||
+                    // true: <span><br></span>, <span> <br> </span>, <span> <br/> </span>
+                    // false: <span>foo <br> </span>, <span> <br> bar</span>
+                    /^\s*<br\s*\/?>\s*$/.test(node.innerHTML);
+            }catch(e){
+                return false;
+            }
+        },
+
+        _isBlankText: function(str){
+            try{
+                return (!str || /^\s*$/.test(str));
+            }catch(e){
+                return false;
+            }
+        },
+
+        /**
+         * @param {Function} eventHandler
+         * @private
+         */
+        _fireEventHandler: function(eventHandler){
+            try{
+                // 특정 조건일 때 광고가 load 안 될 수 있는 이슈 fix
+                // 조건:
+                // * 서비스에서 articleAd module 을 js lazy-loading 없이 실행 했는데 (lazy-loading 후 실행하면 이슈 없음)
+                // * 광고 sdk.js가 다른 js 보다 제일 늦게 load 됐을 경우 발생
+                // 발생 과정 상세 설명:
+                // 1. html 상단에서 `spwp.cmd.push(function(){ "window.광고설정" 설정 })`
+                // 2. 다른 js 모두 load 완료 (`async-광고.js` 는 load 안된 상태)
+                // 3. onpageshow 에 `중간광고 js module` 실행 script add
+                //      * `중간광고-module(window.광고설정)`
+                // 4. `async-광고.js` load 지연으로 제일 마지막에 load 완료 > onpageshow 에 1번의 `spwp.cmd` 실행 add
+                //      * 3번보다 늦게 등록됐으므로, 나중에 실행된다.
+                // 5. 3번의 onpageshow 실행 > `중간광고-module(window.광고설정)` 실행되는데 광고 설정을 참조할 수 없는 상황
+                setTimeout(function(){
+                    eventHandler();
+                }, 10);
+            }catch(e){}
+        }
+    }))();
+    window.ArticleAd = ArticleAd;
+
+})();
